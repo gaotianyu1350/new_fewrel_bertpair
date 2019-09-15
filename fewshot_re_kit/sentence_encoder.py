@@ -6,7 +6,7 @@ import numpy as np
 import os
 from torch import optim
 from . import network
-from pytorch_pretrained_bert import BertTokenizer, BertModel, BertForMaskedLM
+from pytorch_pretrained_bert import BertTokenizer, BertModel, BertForMaskedLM, BertForSequenceClassification
 
 class CNNSentenceEncoder(nn.Module):
 
@@ -61,18 +61,22 @@ class BERTSentenceEncoder(nn.Module):
 
     def __init__(self, pretrain_path, max_length): 
         nn.Module.__init__(self)
-        self.bert = BertModel.from_pretrained(pretrain_path)
+        # self.bert = BertModel.from_pretrained(pretrain_path)
+        self.bert = BertForSequenceClassification.from_pretrained(
+                pretrain_path,
+                num_labels=2)
         self.max_length = max_length
         self.tokenizer = BertTokenizer.from_pretrained(os.path.join(
             pretrain_path, 'bert_vocab.txt'))
 
     def forward(self, inputs):
-        _, x = self.bert(inputs['word'], attention_mask=inputs['mask'])
+        x = self.bert(inputs['word'], inputs['seg'], attention_mask=inputs['mask'])
         return x
     
     def tokenize(self, raw_tokens, pos_head, pos_tail):
         # token -> index
-        tokens = ['[CLS]']
+        # tokens = ['[CLS]']
+        tokens = []
         cur_pos = 0
         pos1_in_index = 0
         pos2_in_index = 0
@@ -93,6 +97,7 @@ class BERTSentenceEncoder(nn.Module):
         indexed_tokens = self.tokenizer.convert_tokens_to_ids(tokens)
         
         # padding
+        '''
         while len(indexed_tokens) < self.max_length:
             indexed_tokens.append(0)
         indexed_tokens = indexed_tokens[:self.max_length]
@@ -107,5 +112,6 @@ class BERTSentenceEncoder(nn.Module):
         # mask
         mask = np.zeros((self.max_length), dtype=np.int32)
         mask[:len(indexed_tokens)] = 1
+        '''
 
-        return indexed_tokens, pos1, pos2, mask
+        return indexed_tokens # , pos1, pos2, mask
