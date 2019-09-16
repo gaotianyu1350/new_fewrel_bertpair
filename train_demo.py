@@ -150,7 +150,7 @@ def main():
             bert_optim = True
         model = framework.train(model, prefix, batch_size, trainN, N, K, Q,
                 optimizer=optimizer, pretrain_model=opt.pretrain, 
-                bert_optim=bert_optim, na_rate=opt.na_rate, val_step=opt.val_step, train_iter=opt.train_iter, val_step=opt.val_step)
+                bert_optim=bert_optim, na_rate=opt.na_rate, val_step=opt.val_step, train_iter=opt.train_iter, val_iter=opt.val_iter)
     else:
         model.cuda()
         model = nn.DataParallel(model)
