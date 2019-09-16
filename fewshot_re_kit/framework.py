@@ -9,7 +9,7 @@ import torch
 from torch import autograd, optim, nn
 from torch.autograd import Variable
 from torch.nn import functional as F
-from pytorch_pretrained_bert import BertAdam
+from pytorch_transformers import AdamW, WarmupLinearSchedule
 
 def warmup_linear(global_step, warmup_step):
     if global_step < warmup_step:
@@ -142,14 +142,15 @@ class FewShotREFramework:
                 {'params': [p for n, p in param_optimizer 
                     if any(nd in n for nd in no_decay)], 'weight_decay': 0.0}
                 ]
-            optimizer = BertAdam(optimizer_grouped_parameters, lr=2e-5)
+            optimizer = AdamW(optimizer_grouped_parameters, lr=2e-5, correct_bias=False)
+            scheduler = WarmupLinearSchedule(optimizer, warmup_steps=warmup_step, t_total=train_iter) 
             lr_step_size = 1000000000
         else:
             parameters_to_optimize = filter(lambda x:x.requires_grad, 
                     model.parameters())
             optimizer = optimizer(parameters_to_optimize, 
                     learning_rate, weight_decay=weight_decay)
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=lr_step_size)
+            scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=lr_step_size)
         if pretrain_model and len(pretrain_model) > 0:
             state_dict = self.__load_model__(pretrain_model)['state_dict']
             own_state = model.state_dict()
@@ -162,6 +163,8 @@ class FewShotREFramework:
         else:
             start_iter = 0
         
+        model = nn.DataParallel(model)
+        model.cuda()
         model.train()
 
         # Training
@@ -171,7 +174,6 @@ class FewShotREFramework:
         iter_right = 0.0
         iter_sample = 0.0
         for it in range(start_iter, start_iter + train_iter):
-            scheduler.step()
             batch, label = next(self.train_data_loader)
             if torch.cuda.is_available():
                 for k in batch:
@@ -179,21 +181,22 @@ class FewShotREFramework:
                 label = label.cuda()
             logits, pred = model(batch, N_for_train, K, 
                     Q * N_for_train + na_rate * Q)
-            loss = model.loss(logits, label) / float(grad_iter)
-            right = model.accuracy(pred, label)
+            loss = model.module.loss(logits, label) / float(grad_iter)
+            right = model.module.accuracy(pred, label)
             loss.backward()
 
-            if bert_optim:
-                cur_lr = 2e-5
-                if warmup:
-                    cur_lr *= warmup_linear(it, warmup_step)
-                for param_group in optimizer.param_groups:
-                    param_group['lr'] = cur_lr
-            else:
-                nn.utils.clip_grad_norm(parameters_to_optimize, 10)
+            # if bert_optim:
+            #     cur_lr = 2e-5
+            #     if warmup:
+            #         cur_lr *= warmup_linear(it, warmup_step)
+            #     for param_group in optimizer.param_groups:
+            #         param_group['lr'] = cur_lr
+            # else:
+            #     nn.utils.clip_grad_norm(parameters_to_optimize, 10)
 
             if it % grad_iter == 0:
                 optimizer.step()
+                scheduler.step()
                 optimizer.zero_grad()
             
             iter_loss += self.item(loss.data)
@@ -217,7 +220,7 @@ class FewShotREFramework:
                     if not os.path.exists(ckpt_dir):
                         os.makedirs(ckpt_dir)
                     save_path = os.path.join(ckpt_dir, model_name + ".pth.tar")
-                    torch.save({'state_dict': model.state_dict()}, save_path)
+                    torch.save({'state_dict': model.module.state_dict()}, save_path)
                     best_acc = acc
                 
         print("\n####################\n")
@@ -241,6 +244,7 @@ class FewShotREFramework:
         ckpt: Checkpoint path. Set as None if using current model parameters.
         return: Accuracy
         '''
+        print("Start eval...")
         print("")
         
         model.eval()
@@ -248,7 +252,7 @@ class FewShotREFramework:
             eval_dataset = self.val_data_loader
         else:
             state_dict = self.__load_model__(ckpt)['state_dict']
-            own_state = model.state_dict()
+            own_state = model.module.state_dict()
             for name, param in state_dict.items():
                 if name not in own_state:
                     continue
@@ -265,7 +269,7 @@ class FewShotREFramework:
                 label = label.cuda()
 
             logits, pred = model(batch, N, K, Q * N + Q * na_rate)
-            right = model.accuracy(pred, label)
+            right = model.module.accuracy(pred, label)
             iter_right += self.item(right.data)
             iter_sample += 1
 

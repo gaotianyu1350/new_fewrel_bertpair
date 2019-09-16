@@ -15,6 +15,7 @@ import numpy as np
 import torch
 import json
 import argparse
+from torch import nn
 
 def main():
     parser = argparse.ArgumentParser()
@@ -89,6 +90,7 @@ def main():
                 max_length)
     else:
         raise NotImplementedError
+    print("finish setting the encoder")
 
     train_data_loader = get_loader(opt.train, sentence_encoder,
             N=trainN, K=K, Q=Q, na_rate=opt.na_rate, batch_size=batch_size)
@@ -96,6 +98,8 @@ def main():
             N=N, K=K, Q=Q, na_rate=opt.na_rate, batch_size=batch_size)
     test_data_loader = get_loader(opt.test, sentence_encoder,
             N=N, K=K, Q=Q, na_rate=opt.na_rate, batch_size=batch_size)
+    
+    print("finish setting data loaders")
     
     if opt.optim == 'sgd':
         optimizer = optim.SGD
@@ -105,6 +109,8 @@ def main():
         raise NotImplementedError
     framework = FewShotREFramework(train_data_loader, 
             val_data_loader, test_data_loader)
+    
+    print("finish setting framework")
         
     prefix = '-'.join([model_name, encoder_name, opt.train, opt.val, 
         str(N), str(K)])
@@ -128,6 +134,8 @@ def main():
         model = Siamese(sentence_encoder, hidden_size=opt.hidden_size)
     else:
         raise NotImplementedError
+    
+    print("finish setting models")
 
     if torch.cuda.is_available():
         model.cuda()
@@ -136,9 +144,15 @@ def main():
         bert_optim = False
         if encoder_name == 'bert':
             bert_optim = True
-        framework.train(model, prefix, batch_size, trainN, N, K, Q,
+        model = framework.train(model, prefix, batch_size, trainN, N, K, Q,
                 optimizer=optimizer, pretrain_model=opt.pretrain, 
                 bert_optim=bert_optim, na_rate=opt.na_rate, val_step=opt.val_step)
+    else:
+        model.cuda()
+        model = nn.DataParallel(model)
+        model.cuda()
+    
+    print("finish loading to GPU and parallel")
 
     # if model_name == 'proto':
     #     model = Proto(sentence_encoder)

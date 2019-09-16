@@ -20,3 +20,4 @@ data/bert-base-uncased
 
 result.txt
 result_detail.txt
+.vscode
