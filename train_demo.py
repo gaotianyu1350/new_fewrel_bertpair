@@ -45,6 +45,10 @@ def main():
             help='encoder: cnn or bert')
     parser.add_argument('--max_length', default=120, type=int,
            help='max length')
+    parser.add_argument('--train_iter', default=30000, type=int,
+           help='val after training for how many steps')
+    parser.add_argument('--val_iter', default=1000, type=int,
+           help='val after training for how many steps')
     parser.add_argument('--val_step', default=2000, type=int,
            help='val after training for how many steps')
     parser.add_argument('--lr', default=1e-1, type=float,
@@ -146,7 +150,7 @@ def main():
             bert_optim = True
         model = framework.train(model, prefix, batch_size, trainN, N, K, Q,
                 optimizer=optimizer, pretrain_model=opt.pretrain, 
-                bert_optim=bert_optim, na_rate=opt.na_rate, val_step=opt.val_step)
+                bert_optim=bert_optim, na_rate=opt.na_rate, val_step=opt.val_step, train_iter=opt.train_iter, val_step=opt.val_step)
     else:
         model.cuda()
         model = nn.DataParallel(model)
