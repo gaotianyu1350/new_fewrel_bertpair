@@ -153,8 +153,8 @@ def main():
                 bert_optim=bert_optim, na_rate=opt.na_rate, val_step=opt.val_step, train_iter=opt.train_iter, val_iter=opt.val_iter)
     else:
         model.cuda()
-        model = nn.DataParallel(model)
-        model.cuda()
+        # model = nn.DataParallel(model)
+        # model.cuda()
     
     print("finish loading to GPU and parallel")
 
