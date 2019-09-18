@@ -13,6 +13,7 @@ class Same(fewshot_re_kit.framework.FewShotREModel):
         self.hidden_size = hidden_size
         # self.fc = nn.Linear(hidden_size, hidden_size)
         self.drop = nn.Dropout()
+        self.sentence_encoder = nn.DataParallel(self.sentence_encoder)
 
     def forward(self, batch, N, K, total_Q):
         '''

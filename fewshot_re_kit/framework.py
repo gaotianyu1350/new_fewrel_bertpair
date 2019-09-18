@@ -163,7 +163,7 @@ class FewShotREFramework:
         else:
             start_iter = 0
         
-        model = nn.DataParallel(model)
+        # model = nn.DataParallel(model)
         model.cuda()
         model.train()
 
@@ -181,8 +181,8 @@ class FewShotREFramework:
                 label = label.cuda()
             logits, pred = model(batch, N_for_train, K, 
                     Q * N_for_train + na_rate * Q)
-            loss = model.module.loss(logits, label) / float(grad_iter)
-            right = model.module.accuracy(pred, label)
+            loss = model.loss(logits, label) / float(grad_iter)
+            right = model.accuracy(pred, label)
             loss.backward()
 
             # if bert_optim:
@@ -220,7 +220,7 @@ class FewShotREFramework:
                     if not os.path.exists(ckpt_dir):
                         os.makedirs(ckpt_dir)
                     save_path = os.path.join(ckpt_dir, model_name + ".pth.tar")
-                    torch.save({'state_dict': model.module.state_dict()}, save_path)
+                    torch.save({'state_dict': model.state_dict()}, save_path)
                     best_acc = acc
                 
         print("\n####################\n")
@@ -252,7 +252,7 @@ class FewShotREFramework:
             eval_dataset = self.val_data_loader
         else:
             state_dict = self.__load_model__(ckpt)['state_dict']
-            own_state = model.module.state_dict()
+            own_state = model.state_dict()
             for name, param in state_dict.items():
                 if name not in own_state:
                     continue
@@ -269,7 +269,7 @@ class FewShotREFramework:
                 label = label.cuda()
 
             logits, pred = model(batch, N, K, Q * N + Q * na_rate)
-            right = model.module.accuracy(pred, label)
+            right = model.accuracy(pred, label)
             iter_right += self.item(right.data)
             iter_sample += 1
 
