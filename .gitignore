@@ -21,3 +21,5 @@ data/bert-base-uncased
 result.txt
 result_detail.txt
 .vscode
+slurm
+run.sbatch
