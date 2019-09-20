@@ -227,6 +227,7 @@ class FewShotREFramework:
         print("Finish training " + model_name)
         # test_acc = self.eval(model, B, N_for_eval, K, Q, test_iter, ckpt=os.path.join(ckpt_dir, model_name + '.pth.tar'))
         # print("Test accuracy: {}".format(test_acc))
+        return model
 
     def eval(self,
             model,
